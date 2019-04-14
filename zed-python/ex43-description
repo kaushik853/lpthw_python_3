@@ -1,0 +1,49 @@
+However, I stumbled upon ex43, which Zed basically throws complete class Text-Adventure game at people who barely no understanding of classes.
+
+This is one of the best reasons not to use LPTHW - though I could write many others.
+
+And no, his design is pretty awful, and misunderstands several things about how best to do OO in Python.
+
+Why make a text adventure with classes when it can be done with functions?
+
+Classes are not required for any task. However, they make it easier and clearer to express certain concepts. The purpose of a class is to define a data type - for those situations where int, str, tuple, list etc. seem insufficient.
+
+That said, the way that Zed makes things work, there's already a perfectly good type to use to represent scenes - i.e., the function type. The real insight that this design offers is the loop that you see in Engine.play. The point is that your functions don't call each other in order to "go places", but instead communicate back where the player is going, so that the main loop can make that happen. That way, you aren't abusing the function-call mechanism - which is, after all, a call, not a jump. Each action is self-contained. Handling the next scene is not a logical part of the task "handle the current scene", therefore the calls (that you see in many beginner attempts at this sort of project) are inappropriate.
+
+Is "Scene" class mandatory?
+
+As it happens, not in Python, because of the dynamic "duck" typing. In many other languages, it would be.
+
+However, there's no multiple inheritance in this code, and I'm confused as to why you think otherwise. (Further, it is possible to use multiple inheritance without creating 'deadly diamonds'; and further, Python has specified rules for handling those. But I recommend avoiding it anyway; code with multiple inheritance is usually harder to understand, and usually is overlooking a better solution that uses composition instead.)
+
+You instantiate the Map class by setting it to a_map, which takes the Game Map with the starting scene, which is 'central_corridor.' Map class sets the start scene.
+
+You instantiate the Map class, telling it to make a Map that has 'central_corridor' as its starting scene. Then you let a_map be a name for that Map instance.
+
+You instantiate the Engine class by setting it to a_game, which starts the game loop and also "creates" the game with the map provided. Engine class sets the map received to "scene_map"
+
+You instantiate the Engine class, telling it to make an Engine that has a_map as its scene_map. Then you let a_game be a name for that Engine instance. The game loop is not started yet.
+
+a_game.play() calls the function play(), which uses the Map class to get the first scene with opening_scene() function. opening_scene() sets the current_scene to the start_scene that you instantiated the Map class with. "last_scene" sets the last scene to 'finished'.
+
+a_game.play() calls the method play of the Engine instance named a_game. It asks the Map instance (which it has remembered as self.scene_map) to determine the first scene, using the opening_scene method of that instance. opening_scene returns the Scene instance stored within Map.scenes (this belongs to the Map class itself, not to any particular instance) that corresponds to the opening scene's name. That is, since the string 'central_corridor' was specified when creating the Map instance, that string gets looked up in the dictionary, resulting in the CentralCorridor instance that was stored there ahead of time. The Engine takes the returned Scene instance (which is specifically a CentralCorridor instance, this time) and lets current_scene be a name for that (locally to the method).
+
+Similarly, a scene with the specific name 'finished' is looked up, resulting in a Finished instance, which is then named last_scene.
+
+The game loop runs while the last_scene is not reached.
+
+Right. Pedantically: while the current_scene is not equal to the last_scene; this comparison is based on object identity, by default. (If you want things to be equal to each other that are not the same object, and that aren't both instances of built-in types, you need to tell Python how to do the comparison.)
+
+"next_scene_name" is set based on what enter() function for each scene return. When the next_scene_name is changed, it sets the current_scene to "next_scene_name" with next_scene() function. next_scene receives the output from each enter() function and returns proper Class names for next scene for current_scene.enter()
+
+next_scene_name becomes the value returned by the enter method of the current_scene, and then the next_scene method is used to look up that name and find/reset the corresponding scene. next_scene receives the name of the scene (i.e. "output from each enter method", yes) and returns the corresponding Scene instance. current_scene becomes a name for this Scene.
+
+All of this happens regardless of whether the value of next_scene_name actually changes.
+
+The enter methods could have been written to return Scene objects directly. The reason Zed didn't do this is because, by looking them up in a map, you can get the same Scene instance every time you go back to a specific location. Aside from not having to create unnecessary objects, this allows your Scenes to "remember" things that happened previously - e.g., stuff that the player dropped in a room should (probably) still be there if the player comes back. (There are ways to make that happen if you just use functions, but they're a little awkward.)
+
+"current_scene_enter" outside the game loop makes sure that the last scene is printed. When last scene is reached, it runs ^ and terminates.
+
+current_scene.enter(), but yes.
+
+I would have written the code such that when you reach the "end of the game", the last scene that you see returns None. Then the main loop would check for that explicitly, and the Finished and Death scenes would both return that (instead of Death forcefully exiting the program). This would allow for multiple different "endings" to the game, avoid the need to special-case a name for the "game winning" scene, and avoid the need to handle the "last scene" outside the loop.
